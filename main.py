@@ -2,11 +2,15 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 SIZE = 10
 CELL_PIXELS = 4
+# noise array height, width
 HEIGHT = SIZE * CELL_PIXELS
 WIDTH = SIZE * CELL_PIXELS
+# for animation
+TIME_BETWEEN_FRAMES = 100
 
 # make grid of points
 def make_grid():
@@ -97,7 +101,7 @@ def easing_func(x):
     return 6*x ** 5 - 15*x ** 4 + 10 * x ** 3
 
 # calculate perlin noise value at each (x, y)
-def main():
+def perlin_noise(frame_seed):
     grid = make_grid()
     unit_vectors = get_unit_vectors(grid)
 
@@ -123,10 +127,35 @@ def main():
     min_val = np.min(noise)
     max_val = np.max(noise)
     noise = (noise - min_val) / (max_val - min_val) * 255
+
+    return noise
+
+
+def animate(frame):
+    noise = perlin_noise(frame)
+    im.set_array(noise)
+    return [im]
+
+
+static_or_anim = str(input("choose plot style: 'image' or 'animation': "))
     
+if static_or_anim == "image":
+    # random number as frame seed, since there has to be 
+    # a frame seed for the animation, but not for a static 
+    # image, and this still produces a different image
+    # every time the program is run
+    noise = perlin_noise(frame_seed=42)
     plt.imshow(noise, cmap="grey", aspect="auto")
     plt.colorbar()
     plt.show()
-    
 
-main()
+elif static_or_anim == "animation":
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.imshow(np.zeros((HEIGHT, WIDTH)), cmap='gray', vmin=0, vmax=255)
+    ax.set_title('Animated Perlin Noise')
+    ax.axis('off')
+
+    anim = animation.FuncAnimation(fig, animate, frames = 100, interval = TIME_BETWEEN_FRAMES, blit=True, repeat=True)
+
+    plt.tight_layout()
+    plt.show()
