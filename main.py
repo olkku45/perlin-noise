@@ -1,15 +1,18 @@
 import random
 import math
-from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
 
-SIZE = 100
-CELL_PIXELS = 25
+SIZE = 10
+CELL_PIXELS = 4
+HEIGHT = SIZE * CELL_PIXELS
+WIDTH = SIZE * CELL_PIXELS
 
 # make grid of points
 def make_grid():
     grid = []
-    for x in range(SIZE):
-        for y in range(SIZE):
+    for x in range(SIZE + 1):
+        for y in range(SIZE + 1):
             grid.append((x,y))
 
     return grid
@@ -44,7 +47,6 @@ def locate_corners(x, y):
 
 
 def vectors_from_corners_to_point(corners, pixel_x, pixel_y):
-    # sublists of this list have 4 vectors each
     vectors = []
 
     for corner in corners:
@@ -73,6 +75,7 @@ def interpolate(dot_products, pixel_x, pixel_y, cell_x, cell_y):
     x = easing_func(pixel_x - cell_x)
     y = easing_func(pixel_y - cell_y)
 
+    # these variables don't have any proper names
     m1 = dot_products[0] + x * (dot_products[1] - dot_products[0])
     m2 = dot_products[2] + x * (dot_products[3] - dot_products[2])
     m3 = m1 + y * (m2 - m1)
@@ -93,16 +96,15 @@ def choose_unit_vectors(corners, unit_vectors):
 def easing_func(x):
     return 6*x ** 5 - 15*x ** 4 + 10 * x ** 3
 
-
 # calculate perlin noise value at each (x, y)
 def main():
-    window = Image.new("RGB", (SIZE * CELL_PIXELS, SIZE * CELL_PIXELS))
-
     grid = make_grid()
     unit_vectors = get_unit_vectors(grid)
-    
+
+    noise = np.zeros((HEIGHT, WIDTH))
+
     for cell_x, cell_y in grid:
-        if cell_x == SIZE - 1 or cell_y == SIZE - 1:
+        if cell_x == SIZE or cell_y == SIZE:
             continue
         corners = locate_corners(cell_x, cell_y)
         chosen_unit_vectors = choose_unit_vectors(corners, unit_vectors)
@@ -114,12 +116,17 @@ def main():
 
                 ctp_vectors = vectors_from_corners_to_point(corners, x, y)
                 dot_products = compute_dot_products(chosen_unit_vectors, ctp_vectors)
-                
-                noise_value = interpolate(dot_products, x, y, cell_x, cell_y)
-                noise_value = int((noise_value + math.sqrt(2)) / (2 * math.sqrt(2)) * 255)
 
-                window.putpixel((round(x * CELL_PIXELS), round(y * CELL_PIXELS)), (noise_value, noise_value, noise_value))
+                noise_value = interpolate(dot_products, x, y, cell_x, cell_y)
+                noise[int(y * CELL_PIXELS)][int(x * CELL_PIXELS)] = noise_value
+
+    min_val = np.min(noise)
+    max_val = np.max(noise)
+    noise = (noise - min_val) / (max_val - min_val) * 255
     
-    window.show()
+    plt.imshow(noise, cmap="grey", aspect="auto")
+    plt.colorbar()
+    plt.show()
+    
 
 main()
