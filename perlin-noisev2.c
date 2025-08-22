@@ -1,3 +1,16 @@
+/*
+This program outputs non-octave perlin noise, so it's quite blurry, and 
+it works without any external dependencies. 
+CELL_AMOUNT dictates the amount of cells in the grid of points. 
+HEIGHT and WIDTH are the dimensions of the output image.
+CELL_PIXELS is the amount of pixels in a single cell.
+Output is thingy.ppm in the current directory. Name the file however you want 
+in the savePerlinImage function call in main, but make sure it's 
+of type .ppm.
+
+Command: gcc perlin-noise.c -lm
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -47,43 +60,43 @@ VectorArray* getUnitVectors() {
 	return vectors;
 }
 
-VectorArray4* locateCellCorners(int x, int y) {
-	VectorArray4* corners = malloc(sizeof(VectorArray4));
+VectorArray4 locateCellCorners(int x, int y) {
+	VectorArray4 corners;
 
 	Vec2 topLeft = {x, y};
 	Vec2 topRight = {x + 1, y};
 	Vec2 bottomLeft = {x, y + 1};
 	Vec2 bottomRight = {x + 1, y + 1};
 
-	corners->arr[0] = topLeft;
-	corners->arr[1] = topRight;
-	corners->arr[2] = bottomLeft;
-	corners->arr[3] = bottomRight;
+	corners.arr[0] = topLeft;
+	corners.arr[1] = topRight;
+	corners.arr[2] = bottomLeft;
+	corners.arr[3] = bottomRight;
 
 	return corners;
 }
 
-VectorArray4* ctpVectors(VectorArray4* corners, float pixelX, float pixelY) {
-	VectorArray4* ctpVectorsArr = malloc(sizeof(VectorArray4));
+VectorArray4 ctpVectors(VectorArray4 corners, float pixelX, float pixelY) {
+	VectorArray4 ctpVectorsArr;
 
 	for (int i = 0; i < 4; i++) {
 		Vec2 vector;
-		vector.x = pixelX - corners->arr[i].x;
-		vector.y = pixelY - corners->arr[i].y;
-		ctpVectorsArr->arr[i] = vector;
+		vector.x = pixelX - corners.arr[i].x;
+		vector.y = pixelY - corners.arr[i].y;
+		ctpVectorsArr.arr[i] = vector;
 	}
 	return ctpVectorsArr;
 }
 
-FloatArray4* getDotProducts(VectorArray4* unitVectors, VectorArray4* ctpVectors) {
-	FloatArray4* dotProducts = malloc(sizeof(VectorArray4));
+FloatArray4 getDotProducts(VectorArray4 unitVectors, VectorArray4 ctpVectors) {
+	FloatArray4 dotProducts;
 
 	for (int i = 0; i < 4; i++) {
-		Vec2 unitVector = unitVectors->arr[i];
-		Vec2 ctpVector = ctpVectors->arr[i];
+		Vec2 unitVector = unitVectors.arr[i];
+		Vec2 ctpVector = ctpVectors.arr[i];
 
 		float dot = unitVector.x * ctpVector.x + unitVector.y * ctpVector.y;
-		dotProducts->arr[i] = dot;
+		dotProducts.arr[i] = dot;
 	}
 	return dotProducts;
 }
@@ -92,26 +105,26 @@ float easingFunc(float x) {
 	return 6*pow(x, 5) - 15*pow(x, 4) + 10*pow(x, 3);
 }
 
-float interpolate(FloatArray4* dotProducts, float pixelX, float pixelY, int cellX, int cellY) {
+float interpolate(FloatArray4 dotProducts, float pixelX, float pixelY, int cellX, int cellY) {
 	float x = easingFunc(pixelX - cellX);
 	float y = easingFunc(pixelY - cellY);
 
-	float i1 = dotProducts->arr[0] + x * (dotProducts->arr[1] - dotProducts->arr[0]);
-	float i2 = dotProducts->arr[2] + x * (dotProducts->arr[3] - dotProducts->arr[2]);
+	float i1 = dotProducts.arr[0] + x * (dotProducts.arr[1] - dotProducts.arr[0]);
+	float i2 = dotProducts.arr[2] + x * (dotProducts.arr[3] - dotProducts.arr[2]);
 	float result = i1 + y * (i2 - i1);
 
 	return result;
 }
 
-VectorArray4* chooseUnitVectors(VectorArray4* corners, VectorArray* unitVectors) {
-	VectorArray4* chosenVecArr = malloc(sizeof(VectorArray4));
+VectorArray4 chooseUnitVectors(VectorArray4 corners, VectorArray* unitVectors) {
+	VectorArray4 chosenVecArr;
 
 	for (int i = 0; i < 4; i++) {
-		Vec2 corner = corners->arr[i];
+		Vec2 corner = corners.arr[i];
 
 		int gridIndex = (int)corner.y * (CELL_AMOUNT + 1) + (int)corner.x;
 
-		chosenVecArr->arr[i] = unitVectors->arr[gridIndex];
+		chosenVecArr.arr[i] = unitVectors->arr[gridIndex];
 	}
 	return chosenVecArr;
 }
@@ -150,28 +163,22 @@ int main() {
 				continue;
 			}
 
-			VectorArray4* cellCorners = locateCellCorners(cellX, cellY);
-			VectorArray4* chosenUnitVectors = chooseUnitVectors(cellCorners, unitVectors);
+			VectorArray4 cellCorners = locateCellCorners(cellX, cellY);
+			VectorArray4 chosenUnitVectors = chooseUnitVectors(cellCorners, unitVectors);
 
 			for (int i = 0; i < CELL_PIXELS; i++) {
 				for (int j = 0; j < CELL_PIXELS; j++) {
 					float pixelX = (float)cellX + (float)i / (float)CELL_PIXELS;
 					float pixelY = (float)cellY + (float)j / (float)CELL_PIXELS;
 
-					VectorArray4* ctpVectorsArr = ctpVectors(cellCorners, pixelX, pixelY);
-					FloatArray4* dotProductsArr = getDotProducts(chosenUnitVectors, ctpVectorsArr);
+					VectorArray4 ctpVectorsArr = ctpVectors(cellCorners, pixelX, pixelY);
+					FloatArray4 dotProductsArr = getDotProducts(chosenUnitVectors, ctpVectorsArr);
 
 					float noiseValue = interpolate(dotProductsArr, pixelX, pixelY, cellX, cellY);
-					float pixelValue = roundf((noiseValue + sqrtf(2) / 2) / sqrtf(2) * 255);
 
 					noise->arr[(int)(pixelY * CELL_PIXELS)][(int)(pixelX * CELL_PIXELS)] = noiseValue;
-
-					free(ctpVectorsArr);
-					free(dotProductsArr);
 				}
 			}
-			free(cellCorners);
-			free(chosenUnitVectors);
 		}
 	}
 	free(unitVectors);
